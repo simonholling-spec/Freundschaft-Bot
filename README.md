@@ -1,0 +1,2 @@
+# Freundschaft-Bot
+Chat Bot 
