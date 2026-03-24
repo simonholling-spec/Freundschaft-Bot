@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Freundschaft Betriebsassistent</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{height:100%;overflow:hidden}
+body{height:100%;overflow:hidden;font-family:Georgia,'Times New Roman',serif;background:#FDF5E6;position:fixed;width:100%;top:0;left:0}
+.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#FDF5E6,#F5E6C8);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.box{background:#fff;border-radius:20px;padding:40px 32px;max-width:420px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.07);text-align:center}
+.box h1{font-size:24px;color:#1B5E3B;margin:8px 0;font-weight:700}
+.box p{font-size:14px;color:#6B7280;margin:0 0 20px;line-height:1.5}
+.box input{width:100%;padding:12px 14px;font-size:15px;border:2px solid #F5E6C8;border-radius:11px;outline:none;font-family:inherit;margin-bottom:8px}
+.box input:focus{border-color:#E8961F}
+.box label{display:block;font-size:12px;color:#6B7280;text-align:left;margin-bottom:4px;margin-top:8px}
+.box button{width:100%;padding:13px;font-size:15px;font-weight:600;color:#fff;background:#1B5E3B;border:none;border-radius:11px;cursor:pointer;font-family:inherit;margin-top:10px}
+.box button:disabled{background:#6B7280;cursor:not-allowed}
+.box .link{font-size:12px;color:#9CA3AF;margin-top:14px;cursor:pointer;text-decoration:underline}
+.box .err{color:#DC2626;font-size:13px;margin-bottom:8px}
+.box .hint{font-size:11px;color:#9CA3AF;margin-top:10px;line-height:1.4}
+.box .ok{color:#1B5E3B;font-size:13px;margin-bottom:8px}
+.wrap{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column}
+.hdr{background:#1B5E3B;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.hdr-t{color:#fff;font-size:17px;font-weight:700}
+.hdr-s{color:#F5E6C8;font-size:13px}
+.abtn{background:rgba(255,255,255,.15);border:none;color:#F5E6C8;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit}
+.msgs{flex:1;overflow-y:scroll;overflow-x:hidden;padding:16px 16px 24px;-webkit-overflow-scrolling:touch}
+.msgs-inner{display:flex;flex-direction:column;gap:10px;min-height:100%}
+.empty{text-align:center;color:#6B7280;padding-top:50px;font-size:15px;line-height:1.6}
+.msg{display:flex}.msg-u{justify-content:flex-end}.msg-a{justify-content:flex-start}
+.bub{max-width:82%;padding:11px 15px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.bub-u{background:#1B5E3B;color:#fff;border-radius:14px 14px 3px 14px}
+.bub-a{background:#fff;color:#1a1a1a;border-radius:14px 14px 14px 3px}
+.nf{margin-top:8px;padding:6px 10px;background:#F3F4F6;border-radius:6px;font-size:12px;color:#E8961F;font-weight:600}
+.uc{margin-top:8px;padding:6px 10px;background:#FEF3C7;border-radius:6px;font-size:12px;color:#92400E;font-weight:600}
+.greeting{margin-top:8px;font-size:12px;color:#9CA3AF;font-style:italic}
+.nsync{margin-top:4px;font-size:11px;color:#1B5E3B}
+.nfail{margin-top:4px;font-size:11px;color:#DC2626}
+.dots{display:flex;gap:5px;align-items:center;padding:12px 18px;background:#fff;border-radius:14px 14px 14px 3px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.dot{width:7px;height:7px;border-radius:50%;background:#E8961F;animation:bn 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}
+@keyframes bn{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+.ibar{padding:10px 16px;padding-bottom:max(20px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #F5E6C8;display:flex;gap:8px;flex-shrink:0;z-index:10}
+.ibar input{flex:1;padding:12px 14px;font-size:16px;border:2px solid #F5E6C8;border-radius:12px;outline:none;font-family:inherit}
+.ibar input:focus{border-color:#E8961F}
+.ibar button{padding:12px 18px;font-size:14px;font-weight:700;color:#fff;background:#E8961F;border:none;border-radius:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.ibar button:disabled{background:#6B7280;cursor:not-allowed}
+.admin{position:fixed;top:0;left:0;right:0;bottom:0;background:#FDF5E6;overflow-y:scroll;-webkit-overflow-scrolling:touch;padding:20px}
+.admin-w{max-width:650px;margin:0 auto}
+.admin-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.admin-h h1{font-size:20px;color:#1B5E3B}
+.admin-h button{padding:7px 14px;background:#1B5E3B;color:#fff;border:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px}
+.qcard{background:#fff;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.qcard strong{font-size:14px;display:block;margin-bottom:4px}
+.qcard .meta{font-size:12px;color:#6B7280}
+.qcard button{margin-top:6px;padding:4px 10px;font-size:12px;background:#F3F4F6;border:none;border-radius:5px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">Laden...</div>
+<script>
+var NOTION_DB_ID = "261333ad3e344a3c9753d38965bcbbbb";
+
+var KB_DATA = [
+"=== TAGESBEGINN ===",
+"Vor 09:00 Uhr: Lichter an (Sicherungskasten, Stehleuchten, Keller, Lichterketten), Heizung/Klima nach Bedarf, beide Tueren entsperren, Musik an (Playlist Tag). Gehweg checken, Terrasse aufbauen (Blumen, Karten, Felle, Kissen). Spuelmaschinenfilter reinigen, Kaffeemaschine + Spuelmaschine an, Kaffeemuehle 17,5g/30Sek. Toilettencheck, Reservierungen checken + Schilder. Kueche: Eintopf-Kocher an, 6x Eier (Sa/So 12x), Brot vorschneiden. Theke: Eis hochholen, Lappen vorbereiten, Krimphove abholen (nicht So).",
+"",
+"=== TAEGLICHE ROUTINEN ===",
+"Temperaturcheck Kuehlschraenke. Rundumcheck Sauberkeit. Kerzen auffuellen. Altglas/Pfand sortieren. Getraenkekarten reinigen. Wachs von Tischen. Zuckerglaeser/Salz/Pfeffer auffuellen. Krimphove-Kisten zurueck. Eintopf-Schild aufstellen. Bestandskontrolle Backwaren.",
+"",
+"=== SCHICHTENDE FRUEH (ab 16:00) ===",
+"Lebensmittel/Obst vorschneiden. Auffuellen: Theke aus Kuehlhaus, Rueckbuffet aus Keller, Kaffee+Reserve, Hafermilch+Reserve, Eisschale. Muell bei Bedarf. Kueche+Theke sauber. Pfand/Altglas leeren. Eis in Thermobox. Fr+Sa extra: Reserve-Obst, WE-Mengen (3x Secco, 2x Helles, 2x Estrella), Espresso Martini Mix (3,5 Flaschen), Lueftung OG+UG an, UG-Tuer zu.",
+"",
+"=== SCHLUSSDIENST ===",
+"Schichtleitung: Kasse auszaehlen, Tagesbericht, Trinkgeld berechnen+verteilen, Umsatz in Tresor, MA ausstempeln, Kasse/Handhelds/EC aus+laden. EC UG Reset Fr+Sa.",
+"Kueche: Eintoepfe umfuellen (Entsorgung nur Mi+Sa), Suppenkocher reinigen, Lebensmittel einraeumen, Broetchen entsorgen/verschenken, Eierkocher reinigen, GN-Behaelter tauschen, Flaechen desinfizieren, Siebtraeger reinigen+einhaengen, Mocca-Master reinigen, Spuele auswischen, Spuelmaschine abpumpen+reinigen.",
+"Service: Terrasse zu (22h), Tische abraeumen+reinigen, Wachs abkratzen, Gastraum sortieren, Theke+Servicepass reinigen, Aufstuhlen (Di/Fr/Sa), Pfand/Altglas/Faesser ins Lager, Servietten/Strohhalme/Bierdeckel, Kuchengabeln/Becher/Tablets spuelen, Aschenbecher reinigen, Kundenstopper rein, Markise ein, WC-Tuer Innenhof zu.",
+"Theke: Kuehlschubladen auffuellen (hinten nach vorne), Rueckbuffet auffuellen, Kuehlhaus auffuellen, Theke/Metallgestelle/Gummimatten/Zapfanlage reinigen, Eiswuerfelbehaelter/Barwerkzeug reinigen, Schnapsaufgiesser wechseln, Spuele auswischen, Kuehlschubladen aussen (Glasreiniger), Rueckbuffet Oberflaechen, Displays reinigen, Musikhandy laden, Wasserkaraffe leeren, Servietten auffuellen.",
+"Abschliessen: Waesche (60 Grad) Mo/Do/Sa, Lichter aus, Bewegungsmelder an, Lueftung aus (Fr/Sa: auf Lueftung umstellen), Check Ausstempeln, Tueren abschliessen.",
+"",
+"=== BARBUCH ===",
+"Heissgetraenke (alle mit Schokobon): Filterkaffee = grosse Tasse. Americano = mittlere Tasse+Untertasse. Espresso/Macchiato = kleine Tasse+Untertasse. Espresso Doppio = mittlere Tasse. Cappuccino = mittlere Tasse. Milchkaffee = grosse Tasse. Latte Macchiato = Nachtmann hoch. Flat White = Nachtmann kurz. Iced Latte = Nachtmann hoch. Heisse Schokolade = Glastasse. Tee = Glastasse rot.",
+"AFG (mit Flasche, Gast schenkt selbst, Ausnahme Mate+Saftschorle): AFG Glas 3 Eiswuerfel ohne Garnierung: Wasser, Saft/Schorle, Almdudler, Mate. Mit Zitrone: Cola/Zero, Sprite, Bitter Lemon, Tonic. Mit Orange: Fanta, Mezzo Mix, Ginger Ale.",
+"Limonaden: Grapefruit: 2cl Grapefruit Mix, 1cl Limettensaft, Soda, 3 Eiswuerfel, Scheibe Limette. Limette-Minz: 2cl Minz Mix, 1cl Limettensaft, Soda, 3 Eiswuerfel, Scheibe Limette, Strauch Minze.",
+"Weine: Weisswein (Weissweinglas): Gut Edel, Tagtraum, Chardonnay, Blanc De Noir, Rosalinde. Sekt (Sektglas): Muenstersekt, Cremant. Rotwein (Rotweinglas): Cabernet Syrah, Tre Passo. Immer etwas mehr als Fuellstrich einschenken!",
+"Aperol Spritz: Aperol Kelchglas, 4cl Aperol, 10cl Secco, 4 Eiswuerfel, Soda, Scheibe Orange.",
+"Lillet Wild Berry: Lillet Kelchglas, 5cl Lillet Blanc, 10cl Wild Berry, Beeren Mix, Eiswuerfel auffuellen.",
+"Sarti Spritz: Sarti Kelchglas, 4cl Sarti, 10cl Secco, Eiswuerfel, Soda, Scheibe Limette.",
+"Limoncello Spritz: Weissweinglas 0,2, 4cl Limoncello, 10cl Secco, Eiswuerfel, Soda, Scheibe Zitrone, Strauch Minze.",
+"Spritzer: Weissweinglas 0,2, Weinschorle, Scheibe Zitrone, 3 Eiswuerfel.",
+"Crodino: Weissweinglas 0,2, Crodino, 3 Eiswuerfel, Scheibe Orange.",
+"Golden Ferrari: AFG Glas, 20cl Secco, 10cl Mate, 3 Eiswuerfel.",
+"Secco Maracuja: AFG Glas, 20cl Secco, 10cl Maracuja, 3 Eiswuerfel.",
+"Espresso Martini: Shaker, 4-5 Eiswuerfel, 3cl Vodka, 3cl Kahlua, 3cl Espresso, 15-20s schuetteln, Martini Glas durch Sieb, 3 Bohnen garnieren. Mix-Sollbestand Fr/Sa: 3,5 Flaschen.",
+"Longdrinks (alle Nachtmann Glas Gross): Gin Tonic: 4cl Gin (Monkey47/Malfi/Beefeater), 4-5 Eiswuerfel, Scheibe Zitrone, Thomas Henry Tonic dazu. Vodka Soda: 4-5 Eis, 4cl Vodka, 1cl Limetten-/Zitronensaft, Soda, Scheibe Zitrone/Limette. Vodka Lemon: 4-5 Eis, 4cl Vodka, Scheibe Zitrone, Thomas Henry Lemon dazu. Vodka Mate: 4-5 Eis, 4cl Vodka, Mate auffuellen. Cuba Libre: 1/4 Limette stampfen, 4-5 Eis, 4cl Havanna Club 3, Scheibe Limette, Cola. Santo Libre: 4-5 Eis, 4cl Havanna Club 7, Scheibe Zitrone, Sprite dazu.",
+"Schnaps im Shotglas: Berliner Luft, Frangelico, Jaegermeister, Tequila, Vodka, Sambuca. Im Flat White Glas (3 Eiswuerfel): Limoncello, Ramazotti, Havana Club, Ballantines, Sasse Lagerkorn, Pistazienlikor. Limoncello+Ramazotti mit Scheibe Zitrone.",
+"",
+"=== LIEFERUNGEN ===",
+"Mo: Abholung Krimphove. Di: Lieferung Getraenke Richard + Handelshof, Abholung Krimphove. Mi: Abholung Krimphove + Marktware (bis 13h) + Fischbrathalle (ab 11h) + Feinkost Nassim. Do: Lieferung Bannert und Scherer (Wein), Abholung Krimphove. Fr: Lieferung Getraenke Richard, Abholung Krimphove. Sa: Lieferung Handelshof + Fischbrathalle + Feinkost Nassim, Abholung Krimphove + Marktware (bis 13h). So: Nichts (kein Brot).",
+"",
+"=== TECHNIK ===",
+"Kaffeemaschine: morgens an, abends Siebtraeger reinigen+einhaengen. Muehle: 17,5g/30s. Spuelmaschine: Filter vor Anstellen reinigen, abends abpumpen+reinigen. Mocca-Master: abends reinigen. Eierkocher: morgens 6x (Sa/So 12x), abends reinigen. Suppenkocher: morgens befuellen, abends reinigen. EC-Geraete: abends laden, UG Reset Fr+Sa. Handhelds: abends laden. Sound EG: Soundcraft+Sonos. Sound UG: Yamaha DM3+PA.",
+"",
+"=== PERSONAL ===",
+"Werte: Leidenschaft, Zusammenarbeit, Innovation, Energie, Authentizitaet. Respekt unabhaengig von Position.",
+"Arbeitszeit: 5 Min vor Schichtbeginn. Stempeln bei Beginn+Ende. Pausen absprechen. Dienstplan am 25., Verfuegbarkeiten bis 20. Min 2 Schichten/Woche, 1x WE. Schichttausch: selbst Ersatz+Bestaetigung. Krankheit: sofort per Nachricht.",
+"Kleidung: Feste Schuhe, keine Flip-Flops/Birkenstocks, keine politischen Shirts.",
+"Trinkgeld: gleichmaessig auf alle Anwesenden. Lohn am 15. Folgemonat.",
+"Personalrabatt: 50% Speisen (Arbeitstage), 50% Getraenke (immer), 1 Feierabendgetraenk gratis. Alles buchen!",
+"Regeln: Keine Drogen. Kein Alkohol bei Arbeit (SL-Ausnahme ab 23h moeglich). Nicht ueber Gaeste laestern. Freigetraenke mit SL absprechen. Bei Uebergriffen sofort melden. Wohnungslose/Postboten/Lieferanten: immer Getraenk anbieten, auf Einladung buchen.",
+"",
+"=== SERVICE-REGELN ===",
+"Glaeser bei Neuservierung austauschen (voll gegen leer). Getraenke erst abraeumen wenn Gaeste weg. KEIN Abraeumen leerer Glaeser solange Gast noch sitzt.",
+"",
+"=== REINIGUNG ===",
+"Taeglich: Toiletten, Spuelmaschinenfilter, Terrasse, Gastraum, Theke+Servicepass. Mo: Blumen giessen, Pflanzenpflege, Kuehlschubladen Theke, Staubwischen Rueckbuffet+Galerie, Urinalsiebe. Fr: Spielekiste, Staubwischen. Waesche: Mo/Do/Sa 60 Grad.",
+"",
+"=== TERRASSE ===",
+"Morgens: Grundreinigung, aufbauen (Blumen, Karten, Felle, Kissen). Abends: zu um 22h, Tische abraeumen, Stuehle aufstuhlen+abschliessen, Kundenstopper+Aschenbecher rein, Markise ein.",
+"",
+"=== KASSE ===",
+"Schichtleitung taeglich: Kasse auszaehlen, Tagesumsatz separieren, Tagesbericht ziehen, Trinkgeld berechnen+sortieren+verteilen, Umsatz im Umschlag in Tresor, MA ausstempeln, Kasse+Handhelds aus+laden, EC aus+laden, EC UG Reset Fr+Sa."
+].join("\n");
+
+var GREETINGS = [
+"Gute Schicht noch!",
+"Vorsicht, Simon guckt zu!",
+"Erst das Vergnuegen, dann das Vergnuegen.",
+"Du machst das super!",
+"Freundschaft geht durch den Magen... und die Theke.",
+"Nicht vergessen: Schokobon zum Kaffee!",
+"Laecheln nicht vergessen - die Gaeste sehen das!"
+];
+
+var ansCount = 0;
+function maybeGreeting() {
+  ansCount++;
+  if (ansCount % 2 === 0) return GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+  return "";
+}
+
+var SYS_PROMPT = "Du bist der Freundschaft Betriebsassistent. Antworte freundlich-professionell in du-Form, kurz und praktisch. Gib NIEMALS an woher die Info kommt. Keine Quellenverweise. Antworte auf Deutsch. Beziehe dich NIEMALS auf vorherige Fragen oder Gespraeche. Beantworte NUR die aktuelle Frage, als waere es die erste und einzige Frage.\n\nDEINE 3 ANTWORT-MODI:\n\n1. SICHER: Wenn du die Antwort klar und eindeutig in deinem Wissen findest, antworte direkt und klar.\n\n2. TEILWEISE SICHER: Wenn du relevanten Kontext findest aber nicht 100% sicher bist, gib die Info die du hast, weise auf die Unsicherheit hin, und setze am Ende [UNSICHER]\n\n3. KEINE ANTWORT: Wenn du nichts findest, sage klar: Das kann ich dir leider nicht beantworten. Ich leite die Frage an die Betriebsleitung weiter. und setze am Ende [NICHT_GEFUNDEN]\n\nGESPERRT (verweigern, ohne Marker): Gehaelter, Finanzzahlen, Strategiedokumente, Monatsstunden/Beschaeftigungsart/Kontaktdaten einzelner MA, Dienstplan, Bewerberdaten, Feedbackgespraeche.\n\nWISSEN:\n" + KB_DATA;
+
+var ST = {v:"setup", n:"", ms:[], ld:false, oq:[], firstQ:true};
+try{var x=localStorage.getItem("fbot_oq");if(x)ST.oq=JSON.parse(x)}catch(e){}
+
+function gk(){try{return localStorage.getItem("fbot_key")||""}catch(e){return ""}}
+function sk(k){try{localStorage.setItem("fbot_key",k)}catch(e){}}
+function gnk(){try{return localStorage.getItem("fbot_nkey")||""}catch(e){return ""}}
+function snk(k){try{localStorage.setItem("fbot_nkey",k)}catch(e){}}
+function soq(){try{localStorage.setItem("fbot_oq",JSON.stringify(ST.oq))}catch(e){}}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>")}
+
+async function syncToNotion(question, askedBy, type) {
+  var nkey = gnk();
+  if (!nkey) return false;
+  try {
+    var res = await fetch("https://api.notion.com/v1/pages", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + nkey,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        parent: { database_id: NOTION_DB_ID },
+        properties: {
+          "Frage": { title: [{ text: { content: question } }] },
+          "Status": { select: { name: "Offen" } },
+          "Gestellt von": { rich_text: [{ text: { content: askedBy } }] },
+          "Bereich": { select: { name: "Sonstiges" } }
+        }
+      })
+    });
+    var d = await res.json();
+    return !d.object || d.object !== "error";
+  } catch(e) {
+    return false;
+  }
+}
+
+function init(){ST.v=(gk()&&gnk())?"login":"setup";render()}
+
+function render(){
+  var a=document.getElementById("app");
+  if(ST.v==="setup")return rSetup(a);
+  if(ST.v==="admin")return rAdmin(a);
+  if(ST.v==="login")return rLogin(a);
+  rChat(a);
+}
+
+function rSetup(el){
+  var hasKeys = gk() && gnk();
+  el.innerHTML='<div class="screen"><div class="box"><div style="font-size:40px;margin-bottom:8px">&#9881;</div><h1>Einrichtung</h1><p>API-Keys eingeben. Werden nur lokal auf diesem Geraet gespeichert.</p><div id="serr"></div>'
+    +'<label>Claude API-Key</label><input type="password" placeholder="sk-ant-..." id="keyIn" value="'+(gk()?'********':'')+'">'
+    +'<label>Notion Integration Token</label><input type="password" placeholder="ntn_... oder secret_..." id="nkeyIn" value="'+(gnk()?'********':'')+'">'
+    +'<button id="keyBtn">Speichern und starten</button>'
+    +'<div class="hint">Claude Key: console.anthropic.com<br>Notion Token: notion.so/my-integrations<br>Beide Keys werden nicht weitergegeben.</div>'
+    +(hasKeys?'<div class="link" id="skipLnk">Ohne Aenderung weiter</div>':'')
+    +'</div></div>';
+  var ki=document.getElementById("keyIn"),nki=document.getElementById("nkeyIn"),kb=document.getElementById("keyBtn");
+  var sl=document.getElementById("skipLnk");
+  if(sl)sl.addEventListener("click",function(){ST.v="login";render()});
+  ki.addEventListener("focus",function(){if(this.value==="********")this.value=""});
+  nki.addEventListener("focus",function(){if(this.value==="********")this.value=""});
+  ki.addEventListener("keydown",function(e){if(e.key==="Enter")nki.focus()});
+  nki.addEventListener("keydown",function(e){if(e.key==="Enter")doKey()});
+  kb.addEventListener("click",doKey);
+  function doKey(){
+    var cv=ki.value.trim(),nv=nki.value.trim();
+    if(cv==="********")cv=gk();
+    if(nv==="********")nv=gnk();
+    if(!cv||cv.length<10){document.getElementById("serr").innerHTML='<div class="err">Bitte einen gueltigen Claude API-Key eingeben</div>';return}
+    if(!nv||nv.length<10){document.getElementById("serr").innerHTML='<div class="err">Bitte einen gueltigen Notion Token eingeben</div>';return}
+    sk(cv);snk(nv);
+    document.getElementById("serr").innerHTML='<div class="ok">Gespeichert!</div>';
+    setTimeout(function(){ST.v="login";render()},500);
+  }
+  setTimeout(function(){if(!gk())ki.focus();else nki.focus()},100);
+}
+
+function rLogin(el){
+  el.innerHTML='<div class="screen"><div class="box"><div style="font-size:48px;margin-bottom:8px">&#129505;</div><h1>Freundschaft</h1><p>Betriebsassistent<br>Stelle deine Fragen zu Ablaeufen, Rezepten und Prozessen.</p><input type="text" placeholder="Dein Name" id="nameIn"><button id="goBtn" disabled>Los gehts</button><div class="link" id="cfgLnk">Einstellungen</div></div></div>';
+  var ni=document.getElementById("nameIn"),gb=document.getElementById("goBtn");
+  ni.addEventListener("input",function(){gb.disabled=!ni.value.trim()});
+  ni.addEventListener("keydown",function(e){if(e.key==="Enter"&&ni.value.trim()){ST.n=ni.value.trim();ST.v="chat";ST.ms=[];ST.firstQ=true;ansCount=0;render()}});
+  gb.addEventListener("click",function(){if(ni.value.trim()){ST.n=ni.value.trim();ST.v="chat";ST.ms=[];ST.firstQ=true;ansCount=0;render()}});
+  document.getElementById("cfgLnk").addEventListener("click",function(){ST.v="setup";render()});
+  setTimeout(function(){ni.focus()},100);
+}
+
+function rChat(el){
+  var mh="";
+  if(!ST.ms.length)mh='<div class="empty"><div style="font-size:36px;margin-bottom:10px">&#128172;</div>Stelle eine Frage<br>z.B. Wie mache ich einen Aperol Spritz?</div>';
+  for(var i=0;i<ST.ms.length;i++){
+    var m=ST.ms[i],c=m.r==="u"?"msg msg-u":"msg msg-a",b=m.r==="u"?"bub bub-u":"bub bub-a",ex="";
+    if(m.nf)ex='<div class="nf">&#128221; Frage an Betriebsleitung weitergeleitet.</div>';
+    if(m.uc)ex='<div class="uc">&#9888;&#65039; Antwort unsicher - Frage zusaetzlich an Betriebsleitung weitergeleitet.</div>';
+    if(m.ns)ex+='<div class="nsync">&#9989; In Notion gespeichert</div>';
+    if(m.nfl)ex+='<div class="nfail">Notion-Sync fehlgeschlagen - lokal gespeichert</div>';
+    if(m.gr)ex+='<div class="greeting">'+esc(m.gr)+'</div>';
+    mh+='<div class="'+c+'"><div class="'+b+'">'+esc(m.t)+ex+'</div></div>';
+  }
+  if(ST.ld)mh+='<div class="msg msg-a"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+
+  el.innerHTML='<div class="wrap"><div class="hdr"><div class="hdr-l"><span style="font-size:26px">&#129505;</span><div><div class="hdr-t">Freundschaft</div><div class="hdr-s">Hallo '+esc(ST.n)+'</div></div></div><button class="abtn" id="aBtn">&#128203; '+ST.oq.length+'</button></div><div class="msgs" id="mBox"><div class="msgs-inner">'+mh+'</div></div><div class="ibar"><input type="text" placeholder="Stelle deine Frage..." id="qIn"><button id="sBtn">Fragen</button></div></div>';
+
+  document.getElementById("aBtn").addEventListener("click",function(){ST.v="admin";render()});
+  var qi=document.getElementById("qIn"),sb=document.getElementById("sBtn");
+  qi.addEventListener("keydown",function(e){if(e.key==="Enter")doQ()});
+  sb.addEventListener("click",doQ);
+  if(ST.ld){sb.disabled=true;qi.disabled=true}
+  var box=document.getElementById("mBox");
+  if(box)setTimeout(function(){box.scrollTop=box.scrollHeight},50);
+  if(!ST.ld)setTimeout(function(){qi.focus()},150);
+}
+
+async function doQ(){
+  var qi=document.getElementById("qIn"),q=qi.value.trim();
+  if(!q||ST.ld)return;
+  ST.ms.push({r:"u",t:q});
+  ST.ld=true;
+  render();
+  try{
+    var key=gk();
+    if(!key){ST.ms.push({r:"a",t:"Kein API-Key hinterlegt. Bitte unter Einstellungen den Key eingeben."});ST.ld=false;render();return}
+    var userMsg=q;
+    if(ST.firstQ){userMsg="[Begruesse den Nutzer kurz mit dem Namen "+ST.n+", z.B. Hey "+ST.n+"! oder Moin "+ST.n+"! und beantworte dann die Frage.]\n\n"+q;ST.firstQ=false}
+    var res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,system:SYS_PROMPT,messages:[{role:"user",content:userMsg}]})
+    });
+    var d=await res.json();
+    if(d.error){ST.ms.push({r:"a",t:"API-Fehler: "+(d.error.message||"Unbekannt")})}
+    else{
+      var ans=(d.content&&d.content[0]&&d.content[0].text)||"Fehler. Bitte frag die Betriebsleitung.";
+      var nf=ans.indexOf("[NICHT_GEFUNDEN]")!==-1;
+      var uc=ans.indexOf("[UNSICHER]")!==-1;
+      ans=ans.replace(/\[NICHT_GEFUNDEN\]/g,"").replace(/\[UNSICHER\]/g,"").trim();
+      var gr=maybeGreeting();
+      var msgObj={r:"a",t:ans,nf:nf,uc:uc,gr:gr||null};
+      ST.ms.push(msgObj);
+      if(nf||uc){
+        ST.oq.push({q:q,by:ST.n,d:new Date().toISOString(),type:nf?"offen":"unsicher"});
+        soq();
+        ST.ld=false;
+        render();
+        var synced=await syncToNotion(q,ST.n,nf?"offen":"unsicher");
+        msgObj.ns=synced;
+        msgObj.nfl=!synced;
+        render();
+        return;
+      }
+    }
+  }catch(e){ST.ms.push({r:"a",t:"Verbindungsfehler: "+e.message})}
+  ST.ld=false;
+  render();
+}
+
+function rAdmin(el){
+  var c="";
+  if(!ST.oq.length)c='<p style="color:#6B7280;text-align:center;margin-top:30px">Keine offenen Fragen.</p>';
+  else for(var i=0;i<ST.oq.length;i++){
+    var q=ST.oq[i],d=new Date(q.d);
+    var badge=q.type==="unsicher"?'<span style="background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:6px">unsicher</span>':'<span style="background:#FEE2E2;color:#DC2626;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:6px">offen</span>';
+    c+='<div class="qcard"><strong>'+esc(q.q)+badge+'</strong><div class="meta">Von: '+esc(q.by)+' - '+d.toLocaleDateString("de-DE")+'</div><button data-i="'+i+'">Erledigt</button></div>';
+  }
+  el.innerHTML='<div class="admin"><div class="admin-w"><div class="admin-h"><h1>Offene Fragen ('+ST.oq.length+')</h1><button id="bkBtn">Zurueck</button></div>'+c+'</div></div>';
+  document.getElementById("bkBtn").addEventListener("click",function(){ST.v="chat";render()});
+  var bs=el.querySelectorAll(".qcard button");
+  for(var j=0;j<bs.length;j++)bs[j].addEventListener("click",function(){ST.oq.splice(parseInt(this.dataset.i),1);soq();render()});
+}
+
+init();
+</script>
+</body>
+</html>
