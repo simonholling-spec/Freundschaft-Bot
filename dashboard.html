@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Freundschaft · BL Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; font-family: 'DM Sans', -apple-system, sans-serif; background: #FAFAF5; -webkit-font-smoothing: antialiased; }
+  #root { min-height: 100vh; }
+  textarea, input { font-family: inherit; }
+  button { font-family: inherit; cursor: pointer; }
+  a { text-decoration: none; }
+  .loader { text-align: center; padding: 40px; font-size: 14px; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
+</style>
+</head>
+<body>
+<div id="root"><div class="loader">Dashboard wird geladen...</div></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect, useCallback } = React;
+
+const WORKER_URL = "https://freundschaftbot.simon-holling.workers.dev";
+
+const DS = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const DL = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const ML = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const WI = c => { if(c<=1)return"☀️"; if(c<=3)return"⛅"; if(c<=48)return"☁️"; if(c<=55)return"🌦️"; if(c<=67)return"🌧️"; if(c<=77)return"❄️"; return"⛈️" };
+const WT = c => { if(c<=0)return"Klar"; if(c<=2)return"Teilw. bewölkt"; if(c<=3)return"Bewölkt"; if(c<=48)return"Nebel"; if(c<=55)return"Nieselregen"; if(c<=65)return"Regen"; return"Gewitter" };
+
+const DEL = {
+  0:{l:[],a:[]},
+  1:{l:["Getränke Zumdiek"],a:["Krimphove (Backwaren)"]},
+  2:{l:["Handelshof"],a:["Krimphove (Backwaren)"]},
+  3:{l:[],a:["Krimphove","Marktware (bis 13h)","Fischbrathalle (ab 11h)","Feinkost Nassim"]},
+  4:{l:["Bannert & Scherer (Wein)"],a:["Krimphove (Backwaren)"]},
+  5:{l:["Getränke Zumdiek"],a:["Krimphove (Backwaren)"]},
+  6:{l:["Handelshof","Fischbrathalle","Feinkost Nassim"],a:["Krimphove","Marktware (bis 13h)"]}
+};
+const ORD = {0:["Zumdiek (Kollex, bis 12 Uhr)"], 4:["Zumdiek (Kollex, bis 12 Uhr)"]};
+
+const BL_DAILY = [
+  {id:"mail",label:"Check Info-Mail",c:"Kommunikation"},
+  {id:"krimp",label:"Bestände Krimphove checken",c:"Bestand"},
+  {id:"umsatz",label:"Umsatz Vortag checken & eintragen",c:"Finanzen"},
+  {id:"stempel",label:"Stempeluhr Vortag auf Planday prüfen",c:"Personal"},
+  {id:"info",label:"Besonderheiten ans Team weitergeben",c:"Kommunikation"},
+  {id:"inbox",label:"Team-Inbox durchgehen",c:"Kommunikation"}
+];
+const BL_DAY = {
+  0:[{id:"so_best",label:"Bestellung Zumdiek aufgeben (Kollex, bis 12 Uhr)",c:"Bestellung"}],
+  1:[{id:"mo_lief",label:"Lieferannahme Zumdiek",c:"Lieferung"},{id:"mo_we",label:"WE-Nachbereitung & Auswertung",c:"BL"}],
+  2:[{id:"di_lief",label:"Lieferannahme Handelshof",c:"Lieferung"},{id:"di_ware",label:"Wareneingangskontrolle",c:"Qualität"}],
+  3:[{id:"mi_markt",label:"Abholung Marktware koordinieren",c:"Einkauf"},{id:"mi_fisch",label:"Abholung Fischbrathalle koordinieren",c:"Einkauf"},{id:"mi_fb",label:"Feedbackgespräch (falls geplant)",c:"Personal"}],
+  4:[{id:"do_wein",label:"Lieferannahme Wein (Bannert & Scherer)",c:"Lieferung"},{id:"do_best",label:"Bestellung Zumdiek (Kollex, bis 12 Uhr)",c:"Bestellung"},{id:"do_plan",label:"Dienstplan-Fortschritt prüfen",c:"Personal"}],
+  5:[{id:"fr_lief",label:"Lieferannahme Zumdiek",c:"Lieferung"},{id:"fr_we",label:"WE-Vorbereitung prüfen",c:"Betrieb"},{id:"fr_brief",label:"WE-Briefing vorbereiten",c:"Team"}],
+  6:[{id:"sa_brief",label:"Team-Briefing WE",c:"Team"},{id:"sa_hoch",label:"Hochbetrieb-Vorbereitung",c:"Betrieb"}]
+};
+
+const WFS = [
+  {id:"personal",icon:"👥",name:"Personal fehlt",desc:"Vom Bedarf bis zum eingearbeiteten MA",color:"#1B5E3B",steps:[{l:"Warteliste oder Akquise?",d:0},{l:"Kandidaten kontaktieren",d:1},{l:"VG terminieren",d:3},{l:"VG durchführen",d:5},{l:"Entscheidung Einstellung",d:5},{l:"Personalbogen",d:6},{l:"DATEV Sofortmeldung",d:7},{l:"Probeschicht",d:8},{l:"Vertrag unterschreiben",d:10},{l:"Planday anlegen",d:11},{l:"Dish anlegen",d:11},{l:"Dokumente → DATEV",d:12},{l:"Einarbeitungsschichten",d:14},{l:"Feedbackgespräch planen",d:14}]},
+  {id:"saison",icon:"🍹",name:"Saisonkarte",desc:"Idee bis Live-Karte",color:"#E8961F",steps:[{l:"Karte konzipieren",d:0},{l:"Rezepte testen",d:5},{l:"Preise kalkulieren",d:7},{l:"Karte gestalten",d:10},{l:"Zutaten bestellen",d:14},{l:"Team schulen",d:17},{l:"Alte Artikel deaktiv.",d:19},{l:"Neue Artikel anlegen",d:19},{l:"Karte live",d:21},{l:"Playbook updaten",d:21},{l:"Bot-Cache leeren",d:21}]},
+  {id:"event",icon:"🎵",name:"Event UG",desc:"UG-Event Checkliste",color:"#7C3AED",steps:[{l:"Personal planen",d:0},{l:"Getränke erhöhen",d:1},{l:"Obst schneiden",d:0},{l:"UG-Theke aufbauen",d:0},{l:"Kühlzug befüllen",d:0},{l:"EC-Gerät prüfen",d:0},{l:"Technik-Check",d:0},{l:"Sound-Check",d:0},{l:"Eiswürfel",d:0},{l:"Barwerkzeug",d:0}]},
+  {id:"austritt",icon:"👋",name:"MA-Austritt",desc:"Sauberer Austritt",color:"#DC2626",steps:[{l:"Letzte Schichten",d:0},{l:"Übergabe",d:3},{l:"Schlüssel",d:5},{l:"Planday deaktiv.",d:5},{l:"Dish löschen",d:5},{l:"DATEV Abmeldung",d:5},{l:"WhatsApp",d:5},{l:"DB → Inaktiv",d:5},{l:"Zeugnis",d:7}]},
+  {id:"lief",icon:"🔄",name:"Lieferant wechseln",desc:"Strukturierter Wechsel",color:"#0891B2",steps:[{l:"Angebote vergleichen",d:0},{l:"Lieferant anlegen",d:1},{l:"Artikel migrieren",d:2},{l:"Bestellkanal",d:3},{l:"Testbestellung",d:4},{l:"Lieferung prüfen",d:6},{l:"Alte entfernen",d:7},{l:"Team info",d:7},{l:"Liefertage updaten",d:7}]}
+];
+
+const BEREICH_COLOR = {"Bestellwunsch":"#3B82F6","Technik / Reparatur":"#EC4899","Wunsch / Idee":"#A855F7","Frage zum Betrieb":"#F59E0B","Personal":"#22C55E","Hygiene":"#A16207","Sonstiges":"#64748B"};
+
+function dK() { const d=new Date(); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
+function aD(d,n) { const r=new Date(d); r.setDate(r.getDate()+n); return r }
+function fD(d) { return `${d.getDate()}.${d.getMonth()+1}.` }
+function relTime(iso) { const d=new Date(iso),now=new Date(),diff=(now-d)/1000; if(diff<3600) return `vor ${Math.floor(diff/60)}min`; if(diff<86400) return `vor ${Math.floor(diff/3600)}h`; return `vor ${Math.floor(diff/86400)}T` }
+function getHolidays() { return [{d:"2026-05-01",n:"Tag der Arbeit"},{d:"2026-05-14",n:"Christi Himmelfahrt"},{d:"2026-05-25",n:"Pfingstmontag"},{d:"2026-06-04",n:"Fronleichnam"},{d:"2026-10-03",n:"Tag d. Dt. Einheit"},{d:"2026-11-01",n:"Allerheiligen"},{d:"2026-12-25",n:"1. Weihnachtstag"}] }
+function upHolidays() { const today=new Date().toISOString().split("T")[0]; return getHolidays().filter(h=>h.d>=today).slice(0,2) }
+
+const F = "'DM Sans',sans-serif";
+const S = "'Libre Baskerville',Georgia,serif";
+const CD = {background:"#fff",borderRadius:16,padding:"16px 18px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,0.04)",border:"1px solid #f0ede8"};
+const CB = d => ({width:26,height:26,borderRadius:8,border:d?"2px solid #1B5E3B":"2px solid #d0cdc6",display:"flex",alignItems:"center",justifyContent:"center",background:d?"#1B5E3B":"#fff",flexShrink:0});
+
+function App() {
+  const [now] = useState(new Date());
+  const [cks, setCks] = useState({});
+  const [w, setW] = useState(null);
+  const [view, setView] = useState("dashboard");
+  const [awf, setAwf] = useState([]);
+  const [swf, setSwf] = useState(null);
+  const [wn, setWn] = useState("");
+  const [inbox, setInbox] = useState([]);
+  const [inboxLoading, setInboxLoading] = useState(true);
+  const [selInbox, setSelInbox] = useState(null);
+  const [reply, setReply] = useState("");
+  const [saving, setSaving] = useState(false);
+  
+  const day = now.getDay();
+  const ds = `${DL[day]}, ${now.getDate()}. ${ML[now.getMonth()]}`;
+  const hr = now.getHours();
+  const gr = hr<11 ? "Guten Morgen" : hr<17 ? "Moin" : "Guten Abend";
+  const holidays = upHolidays();
+
+  const loadInbox = useCallback(async () => {
+    setInboxLoading(true);
+    try {
+      const r = await fetch(`${WORKER_URL}/inbox`);
+      if (!r.ok) throw new Error("Worker nicht erreichbar");
+      const d = await r.json();
+      setInbox(d.items || []);
+    } catch (e) {
+      console.error("Inbox load error:", e);
+      setInbox([]);
+    }
+    setInboxLoading(false);
+  }, []);
+
+  useEffect(() => {
+    try { const s = localStorage.getItem("fs_c_"+dK()); if (s) setCks(JSON.parse(s)); } catch(e){}
+    try { const x = localStorage.getItem("fs_wf"); if (x) setAwf(JSON.parse(x)); } catch(e){}
+    
+    loadInbox();
+    const interval = setInterval(loadInbox, 60000); // Auto-refresh jede Minute
+    
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=51.96&longitude=7.63&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum,sunrise,sunset&timezone=Europe/Berlin&forecast_days=7")
+      .then(r => r.json())
+      .then(d => {
+        if (!d || !d.current) return;
+        const hs = [];
+        const ts = now.toISOString().split("T")[0];
+        if (d.hourly) {
+          for (let i = 0; i < d.hourly.time.length; i++) {
+            if (d.hourly.time[i].startsWith(ts)) {
+              const h = parseInt(d.hourly.time[i].split("T")[1]);
+              if (h >= 8 && h <= 22 && h % 2 === 0) {
+                hs.push({hour:h, temp:Math.round(d.hourly.temperature_2m[i]), code:d.hourly.weather_code[i], rain:(d.hourly.precipitation_probability && d.hourly.precipitation_probability[i]) || 0});
+              }
+            }
+          }
+        }
+        const ws = [];
+        if (d.daily) {
+          for (let i = 0; i < d.daily.time.length; i++) {
+            const dt = new Date(d.daily.time[i]+"T12:00:00");
+            ws.push({date:dt, dn:DS[dt.getDay()], ds:`${dt.getDate()}.${dt.getMonth()+1}.`, hi:Math.round(d.daily.temperature_2m_max[i]), lo:Math.round(d.daily.temperature_2m_min[i]), code:d.daily.weather_code[i], rain:d.daily.precipitation_sum ? Math.round(d.daily.precipitation_sum[i]*10)/10 : 0});
+          }
+        }
+        setW({
+          temp:Math.round(d.current.temperature_2m),
+          feels:Math.round(d.current.apparent_temperature),
+          code:d.current.weather_code,
+          wind:Math.round(d.current.wind_speed_10m),
+          hi:d.daily?Math.round(d.daily.temperature_2m_max[0]):20,
+          lo:d.daily?Math.round(d.daily.temperature_2m_min[0]):10,
+          h:hs, w:ws
+        });
+      }).catch(()=>{});
+      
+    return () => clearInterval(interval);
+  }, [loadInbox]);
+
+  const sWF = useCallback(x => { setAwf(x); localStorage.setItem("fs_wf", JSON.stringify(x)); }, []);
+  const tog = useCallback(id => {
+    setCks(p => { const n = {...p, [id]: !p[id]}; localStorage.setItem("fs_c_"+dK(), JSON.stringify(n)); return n; });
+  }, []);
+  const startWF = (t, n) => {
+    const s = new Date();
+    sWF([...awf, {id:t.id+"_"+Date.now(), name:t.name, icon:t.icon, color:t.color, note:n||"", start:s.toISOString(), steps:t.steps.map((st,i)=>({id:i, label:st.l, done:false, due:aD(s, st.d).toISOString()}))}]);
+    setView("dashboard"); setSwf(null); setWn("");
+  };
+  const togWF = (wid, sid) => {
+    sWF(awf.map(x => x.id !== wid ? x : {...x, steps:x.steps.map(s => s.id===sid ? {...s, done:!s.done} : s)}));
+  };
+
+  const handleInboxItem = async (itemId, withReply) => {
+    setSaving(true);
+    try {
+      const r = await fetch(`${WORKER_URL}/inbox/${itemId}`, {
+        method:"PATCH",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({status:"Beantwortet", antwort:withReply?reply:""})
+      });
+      if (!r.ok) throw new Error("Speichern fehlgeschlagen");
+      await loadInbox();
+    } catch(e) {
+      alert("Fehler: " + e.message);
+    }
+    setSaving(false);
+    setView("inbox"); setSelInbox(null); setReply("");
+  };
+
+  const allBL = [...BL_DAILY, ...(BL_DAY[day]||[])];
+  const dl = DEL[day];
+  const od = ORD[day];
+  const dc = allBL.filter(t => cks[t.id]).length;
+  const pg = allBL.length ? (dc/allBL.length)*100 : 0;
+  const pw = awf.reduce((s, x) => s + x.steps.filter(st => !st.done).length, 0);
+
+  const alerts = [];
+  if (w) {
+    if (w.temp >= 25) alerts.push({t:"sun", m:"☀️ Terrassen-Wetter! Bestand & Personal prüfen."});
+    if (w.w && w.w[1] && w.w[1].code >= 51) alerts.push({t:"rain", m:`🌧️ Morgen (${w.w[1].dn}) Regen — Terrasse anpassen.`});
+    const we = w.w ? w.w.filter(d => [5,6].includes(d.date.getDay()) && d.code <= 2 && d.hi >= 22) : [];
+    if (we.length > 0 && ![5,6].includes(day)) alerts.push({t:"we", m:`📊 Schönes WE (${we.map(d => d.dn+" "+d.hi+"°").join(", ")}) — Personal!`});
+  }
+  if (holidays.length > 0) {
+    const h = holidays[0];
+    const diff = Math.ceil((new Date(h.d) - now) / (1000*60*60*24));
+    if (diff <= 7) alerts.push({t:"holiday", m:`📅 ${h.n} in ${diff} Tag${diff>1?"en":""} — Bestand & Personal anpassen!`});
+  }
+
+  const hdr = (title, sub, col) => (
+    <div style={{background:col||"#1B5E3B",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+      <button onClick={()=>{setView("dashboard");setSelInbox(null);setReply("");}} style={{background:"none",border:"none",color:"rgba(255,255,255,0.8)",fontSize:22,padding:0}}>←</button>
+      <div>
+        <div style={{fontSize:17,fontWeight:700,fontFamily:S}}>{title}</div>
+        {sub && <div style={{fontSize:12,opacity:0.8,fontFamily:F}}>{sub}</div>}
+      </div>
+    </div>
+  );
+
+  // INBOX DETAIL
+  if (view === "inbox_detail" && selInbox) {
+    const item = inbox.find(i => i.id === selInbox);
+    if (!item) { setView("inbox"); return null; }
+    const col = BEREICH_COLOR[item.bereich] || "#6B7280";
+    return (
+      <div style={{background:"#FAFAF5",minHeight:"100vh",fontFamily:S}}>
+        <div style={{background:col,color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+          <button onClick={()=>{setView("inbox");setSelInbox(null);setReply("");}} style={{background:"none",border:"none",color:"rgba(255,255,255,0.8)",fontSize:22,padding:0}}>←</button>
+          <div style={{flex:1}}>
+            <div style={{fontSize:15,fontWeight:700,fontFamily:S}}>Nachricht von {item.name}</div>
+            <div style={{fontSize:11,opacity:0.85,fontFamily:F}}>{item.bereich} · {relTime(item.created)}</div>
+          </div>
+        </div>
+        <div style={{padding:16}}>
+          <div style={{...CD, borderLeft:`4px solid ${col}`}}>
+            <div style={{fontSize:15,fontFamily:F,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{item.frage}</div>
+          </div>
+          <div style={{fontSize:11,color:"#6B7280",fontFamily:F,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10,marginTop:16}}>Antwort</div>
+          <div style={CD}>
+            <textarea value={reply} onChange={e=>setReply(e.target.value)} placeholder="Antwort an das Team..." style={{width:"100%",minHeight:120,padding:"12px 14px",border:"2px solid #f0ede8",borderRadius:12,fontSize:14,fontFamily:F,outline:"none",resize:"vertical",boxSizing:"border-box",lineHeight:1.5}}/>
+            <div style={{display:"flex",gap:8,marginTop:10}}>
+              <button disabled={saving} onClick={()=>handleInboxItem(item.id, true)} style={{flex:1,padding:"12px 16px",background:saving?"#9CA3AF":"#1B5E3B",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:600,fontFamily:F}}>{saving?"Speichert...":"✓ Antworten & erledigt"}</button>
+              <button disabled={saving} onClick={()=>handleInboxItem(item.id, false)} style={{padding:"12px 14px",background:"#f0ede8",color:"#4B5563",border:"none",borderRadius:10,fontSize:13,fontFamily:F}}>Erledigt</button>
+            </div>
+            <div style={{fontSize:11,color:"#9CA3AF",fontFamily:F,marginTop:10,textAlign:"center"}}>Wird direkt in Notion gespeichert</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // INBOX LIST
+  if (view === "inbox") {
+    return (
+      <div style={{background:"#FAFAF5",minHeight:"100vh",fontFamily:S}}>
+        {hdr("Team-Inbox", `${inbox.length} offen`)}
+        <div style={{padding:16}}>
+          {inboxLoading ? <div style={{...CD,textAlign:"center",color:"#9CA3AF",fontFamily:F}}>Lade...</div>
+          : inbox.length === 0 ? <div style={{...CD,textAlign:"center",padding:40,color:"#9CA3AF",fontFamily:F}}>📭 Keine offenen Nachrichten</div>
+          : inbox.map(item => {
+            const col = BEREICH_COLOR[item.bereich] || "#6B7280";
+            return (
+              <div key={item.id} onClick={()=>{setSelInbox(item.id);setView("inbox_detail");}} style={{...CD,borderLeft:`4px solid ${col}`,cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    <span style={{background:col,color:"#fff",padding:"2px 8px",borderRadius:10,fontSize:10,fontFamily:F,fontWeight:600}}>{item.bereich}</span>
+                    <span style={{fontSize:12,fontFamily:F,fontWeight:600}}>{item.name}</span>
+                  </div>
+                  <span style={{fontSize:10,color:"#9CA3AF",fontFamily:F,flexShrink:0}}>{relTime(item.created)}</span>
+                </div>
+                <div style={{fontSize:13,fontFamily:F,color:"#4B5563",lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{item.frage}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // WEATHER DETAIL
+  if (view === "weather" && w) {
+    return (
+      <div style={{background:"#FAFAF5",minHeight:"100vh",fontFamily:S}}>
+        {hdr("Externe Faktoren", WT(w.code))}
+        <div style={{padding:16}}>
+          <div style={{...CD,background:"linear-gradient(135deg,#EEF7FF,#F0F9FF)",textAlign:"center",padding:"24px 18px"}}>
+            <div style={{fontSize:56,marginBottom:4}}>{WI(w.code)}</div>
+            <div style={{fontSize:42,fontWeight:700,fontFamily:F}}>{w.temp}°C</div>
+            <div style={{fontSize:14,color:"#6B7280",fontFamily:F,marginBottom:8}}>{WT(w.code)}</div>
+            <div style={{display:"flex",justifyContent:"center",gap:16,fontSize:13,fontFamily:F,color:"#6B7280",flexWrap:"wrap"}}>
+              <span>↑{w.hi}°</span><span>↓{w.lo}°</span><span>Gefühlt {w.feels}°</span><span>💨{w.wind}km/h</span>
+            </div>
+          </div>
+          {alerts.map((a,i) => (
+            <div key={i} style={{...CD,background:a.t==="rain"?"#EFF6FF":a.t==="holiday"?"#F0FAF0":"#FFFBEB",border:a.t==="rain"?"1px solid #93C5FD":a.t==="holiday"?"1px solid #86EFAC":"1px solid #FCD34D"}}>
+              <div style={{fontSize:13,fontFamily:F,color:a.t==="rain"?"#1E40AF":a.t==="holiday"?"#166534":"#92400E",fontWeight:500}}>{a.m}</div>
+            </div>
+          ))}
+          {w.h && w.h.length > 0 && (
+            <div style={CD}>
+              <div style={{fontSize:14,fontWeight:700,fontFamily:F,marginBottom:14}}>Heute stündlich</div>
+              <div style={{display:"flex",overflowX:"auto",gap:0,paddingBottom:4}}>
+                {w.h.map((h,i) => (
+                  <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:52,padding:"8px 6px",borderRadius:12,background:h.hour>=hr&&h.hour<hr+2?"#F0FAF0":"transparent"}}>
+                    <div style={{fontSize:11,color:"#9CA3AF",fontFamily:F}}>{h.hour}:00</div>
+                    <div style={{fontSize:20,margin:"4px 0"}}>{WI(h.code)}</div>
+                    <div style={{fontSize:14,fontWeight:600,fontFamily:F}}>{h.temp}°</div>
+                    {h.rain>0 && <div style={{fontSize:10,color:"#3B82F6",fontFamily:F}}>💧{h.rain}%</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {w.w && (
+            <div style={CD}>
+              <div style={{fontSize:14,fontWeight:700,fontFamily:F,marginBottom:14}}>7-Tage</div>
+              {w.w.map((d,i) => {
+                const td = i===0;
+                const we = [0,5,6].includes(d.date.getDay());
+                const gd = we && d.code<=2 && d.hi>=20;
+                return (
+                  <div key={i} style={{display:"flex",alignItems:"center",padding:td||gd?"10px 8px":"10px 0",borderBottom:i<w.w.length-1?"1px solid #f5f3f0":"none",background:td?"#F0FAF0":gd?"#FFFBEB":"transparent",margin:td||gd?"0 -8px":"0",borderRadius:td||gd?10:0}}>
+                    <div style={{width:36,textAlign:"center"}}>
+                      <div style={{fontSize:13,fontFamily:F,fontWeight:td?700:we?600:400,color:td?"#1B5E3B":we?"#E8961F":"#1a1a1a"}}>{td?"Heute":d.dn}</div>
+                      <div style={{fontSize:10,color:"#9CA3AF",fontFamily:F}}>{d.ds}</div>
+                    </div>
+                    <div style={{fontSize:24,width:40,textAlign:"center"}}>{WI(d.code)}</div>
+                    <div style={{flex:1,display:"flex",alignItems:"center",gap:6,paddingLeft:4}}>
+                      <span style={{fontSize:14,fontWeight:600,fontFamily:F,width:32,textAlign:"right"}}>{d.hi}°</span>
+                      <div style={{flex:1,height:4,borderRadius:4,background:"#f0ede8",position:"relative",overflow:"hidden"}}>
+                        <div style={{position:"absolute",left:`${Math.max(0,(d.lo-5)/35*100)}%`,right:`${Math.max(0,100-(d.hi-5)/35*100)}%`,height:"100%",borderRadius:4,background:d.hi>=28?"#F59E0B":d.hi>=22?"#1B5E3B":"#93C5FD"}}/>
+                      </div>
+                      <span style={{fontSize:12,color:"#9CA3AF",fontFamily:F,width:28}}>{d.lo}°</span>
+                    </div>
+                    {d.rain>0 && <div style={{fontSize:10,color:"#3B82F6",fontFamily:F,width:38,textAlign:"right"}}>💧{d.rain}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {holidays.length > 0 && (
+            <div style={CD}>
+              <div style={{fontSize:14,fontWeight:700,fontFamily:F,marginBottom:10}}>📅 Nächste Feiertage</div>
+              {holidays.map((h,i) => {
+                const dt = new Date(h.d);
+                const diff = Math.ceil((dt-now)/(1000*60*60*24));
+                return (
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:i<holidays.length-1?"1px solid #f5f3f0":"none"}}>
+                    <div style={{fontSize:13,fontFamily:F}}>{h.n}</div>
+                    <div style={{fontSize:12,fontFamily:F,color:"#6B7280"}}>{DL[dt.getDay()]}, {fD(dt)} ({diff}T)</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // WORKFLOW DETAIL
+  if (view === "wf_detail") {
+    const wf = awf.find(x => x.id === swf);
+    if (!wf) { setView("workflows"); return null; }
+    const dn = wf.steps.filter(s => s.done).length;
+    const tt = wf.steps.length;
+    return (
+      <div style={{background:"#FAFAF5",minHeight:"100vh",fontFamily:S}}>
+        <div style={{background:wf.color,color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+          <button onClick={()=>setView("workflows")} style={{background:"none",border:"none",color:"rgba(255,255,255,0.8)",fontSize:22,padding:0}}>←</button>
+          <div style={{flex:1}}>
+            <div style={{fontSize:17,fontWeight:700,fontFamily:S}}>{wf.icon} {wf.name}</div>
+            <div style={{fontSize:12,opacity:0.8,fontFamily:F}}>{dn}/{tt} · Start {fD(new Date(wf.start))}</div>
+          </div>
+          {dn === tt && <button onClick={()=>{sWF(awf.filter(x=>x.id!==wf.id));setView("workflows");}} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",padding:"6px 14px",borderRadius:8,fontSize:12,fontFamily:F,fontWeight:600}}>Fertig ✓</button>}
+        </div>
+        <div style={{padding:16}}>
+          {wf.note && <div style={{...CD,background:"#FFFBF0",border:"1px solid #F5E6C8",fontSize:13,fontFamily:F,color:"#92400E"}}>📝 {wf.note}</div>}
+          {wf.steps.map((s,i) => {
+            const due = new Date(s.due);
+            const ov = !s.done && due < now;
+            return (
+              <div key={s.id} onClick={()=>togWF(wf.id, s.id)} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 16px",background:s.done?"#f0faf0":ov?"#FEF2F2":"#fff",borderRadius:12,marginBottom:8,cursor:"pointer",border:s.done?"1px solid #c6e6c6":ov?"1px solid #FECACA":"1px solid #f0ede8"}}>
+                <div style={{...CB(s.done),borderColor:s.done?"#1B5E3B":ov?"#DC2626":"#d0cdc6",marginTop:2}}>{s.done && <span style={{color:"#fff",fontSize:14,fontWeight:700}}>✓</span>}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontFamily:F,fontWeight:500,color:s.done?"#9CA3AF":"#1a1a1a",textDecoration:s.done?"line-through":"none"}}>{s.label}</div>
+                  <div style={{fontSize:11,fontFamily:F,marginTop:3,color:ov?"#DC2626":"#9CA3AF"}}>{ov?"⚠️ Überfällig · ":""}Bis {fD(due)}</div>
+                </div>
+                <div style={{fontSize:12,color:"#C4B5A0",fontFamily:F}}>{i+1}</div>
+              </div>
+            );
+          })}
+          {dn === tt && <div style={{textAlign:"center",padding:24,color:"#1B5E3B",fontFamily:S}}>🎉 Fertig!</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // WORKFLOWS LIST
+  if (view === "workflows") {
+    return (
+      <div style={{background:"#FAFAF5",minHeight:"100vh",fontFamily:S}}>
+        {hdr("Workflows")}
+        <div style={{padding:16}}>
+          {awf.length > 0 && (
+            <>
+              <div style={{fontSize:11,color:"#6B7280",fontFamily:F,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Aktiv ({awf.length})</div>
+              {awf.map(wf => {
+                const dn = wf.steps.filter(s => s.done).length;
+                const tt = wf.steps.length;
+                return (
+                  <div key={wf.id} onClick={()=>{setSwf(wf.id);setView("wf_detail");}} style={{...CD,borderLeft:`4px solid ${wf.color}`,cursor:"pointer"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                      <div style={{fontSize:15,fontWeight:700,fontFamily:F}}>{wf.icon} {wf.name}</div>
+                      <div style={{fontSize:12,fontFamily:F,fontWeight:600,color:dn===tt?"#1B5E3B":"#E8961F"}}>{dn}/{tt}</div>
+                    </div>
+                    <div style={{background:"#f0ede8",borderRadius:6,height:5,overflow:"hidden"}}>
+                      <div style={{background:wf.color,height:"100%",width:`${(dn/tt)*100}%`,borderRadius:6}}/>
+                    </div>
+                    {wf.note && <div style={{fontSize:11,color:"#9CA3AF",fontFamily:F,marginTop:6}}>📝 {wf.note}</div>}
+                  </div>
+                );
+              })}
+              <div style={{height:16}}/>
+            </>
+          )}
+          <div style={{fontSize:11,color:"#6B7280",fontFamily:F,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Starten</div>
+          {WFS.map(t => (
+            <div key={t.id} onClick={()=>setSwf(swf===t.id?null:t.id)} style={{...CD,borderLeft:`4px solid ${t.color}`,cursor:"pointer",background:swf===t.id?"#f8f7f4":"#fff"}}>
+              <div style={{fontSize:15,fontWeight:700,fontFamily:F,marginBottom:2}}>{t.icon} {t.name}</div>
+              <div style={{fontSize:12,color:"#6B7280",fontFamily:F}}>{t.desc} · {t.steps.length} Schritte</div>
+              {swf === t.id && (
+                <div style={{marginTop:12}} onClick={e=>e.stopPropagation()}>
+                  <input value={wn} onChange={e=>setWn(e.target.value)} placeholder="Notiz (z.B. Name)" style={{width:"100%",padding:"10px 12px",border:"2px solid #f0ede8",borderRadius:10,fontSize:14,fontFamily:F,outline:"none",marginBottom:8,boxSizing:"border-box"}}/>
+                  <button onClick={()=>startWF(t, wn)} style={{width:"100%",padding:12,background:t.color,color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:600,fontFamily:F}}>Starten →</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // CHECKLIST
+  if (view === "checklist") {
+    return (
+      <div style={{background:"#FAFAF5",minHeight:"100vh",fontFamily:S}}>
+        {hdr("BL Tages-Checks", `${dc}/${allBL.length}`)}
+        <div style={{padding:16}}>
+          <div style={{background:"#1B5E3B",borderRadius:12,height:6,marginBottom:20,overflow:"hidden"}}>
+            <div style={{background:"#E8961F",height:"100%",width:`${pg}%`,borderRadius:12}}/>
+          </div>
+          <div style={{fontSize:11,color:"#6B7280",fontFamily:F,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Täglich</div>
+          {BL_DAILY.map(t => (
+            <div key={t.id} onClick={()=>tog(t.id)} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",background:cks[t.id]?"#f0faf0":"#fff",borderRadius:12,marginBottom:8,cursor:"pointer",border:cks[t.id]?"1px solid #c6e6c6":"1px solid #f0ede8"}}>
+              <div style={CB(cks[t.id])}>{cks[t.id] && <span style={{color:"#fff",fontSize:14,fontWeight:700}}>✓</span>}</div>
+              <div>
+                <div style={{fontSize:14,fontFamily:F,fontWeight:500,color:cks[t.id]?"#9CA3AF":"#1a1a1a",textDecoration:cks[t.id]?"line-through":"none"}}>{t.label}</div>
+                <div style={{fontSize:11,color:"#9CA3AF",fontFamily:F,marginTop:2}}>{t.c}</div>
+              </div>
+            </div>
+          ))}
+          {(BL_DAY[day]||[]).length > 0 && (
+            <>
+              <div style={{fontSize:11,color:"#6B7280",fontFamily:F,fontWeight:600,textTransform:"uppercase",letterSpacing:1.5,marginTop:16,marginBottom:10}}>{DL[day]}</div>
+              {(BL_DAY[day]||[]).map(t => (
+                <div key={t.id} onClick={()=>tog(t.id)} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",background:cks[t.id]?"#f0faf0":"#fff",borderRadius:12,marginBottom:8,cursor:"pointer",border:cks[t.id]?"1px solid #c6e6c6":"1px solid #f0ede8"}}>
+                  <div style={CB(cks[t.id])}>{cks[t.id] && <span style={{color:"#fff",fontSize:14,fontWeight:700}}>✓</span>}</div>
+                  <div>
+                    <div style={{fontSize:14,fontFamily:F,fontWeight:500,color:cks[t.id]?"#9CA3AF":"#1a1a1a",textDecoration:cks[t.id]?"line-through":"none"}}>{t.label}</div>
+                    <div style={{fontSize:11,color:"#9CA3AF",fontFamily:F,marginTop:2}}>{t.c}</div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+          {pg === 100 && <div style={{textAlign:"center",padding:24,color:"#1B5E3B",fontFamily:S}}>🎉 Erledigt!</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // DASHBOARD
+  return (
+    <div style={{background:"#FAFAF5",minHeight:"100vh",fontFamily:S,paddingBottom:40}}>
+      <div style={{background:"linear-gradient(135deg,#1B5E3B 0%,#2a7a52 100%)",padding:"28px 20px 24px",color:"#fff"}}>
+        <div style={{fontSize:13,color:"#F5E6C8",fontFamily:F,fontWeight:500,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Freundschaft · Betriebsleitung</div>
+        <div style={{fontSize:26,fontWeight:700,marginBottom:4}}>{gr} 👋</div>
+        <div style={{fontSize:14,color:"#d4e8d4",fontFamily:F}}>{ds}</div>
+      </div>
+      <div style={{padding:"16px 16px 0"}}>
+
+        {inbox.length > 0 && (
+          <div onClick={()=>setView("inbox")} style={{...CD,cursor:"pointer",background:"linear-gradient(135deg,#FEF3C7,#FFFBEB)",border:"1px solid #F59E0B"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:36,height:36,borderRadius:10,background:"#F59E0B",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>📥</div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,fontFamily:F,color:"#92400E"}}>Team-Inbox</div>
+                  <div style={{fontSize:11,fontFamily:F,color:"#B45309"}}>{inbox.length} offene Nachricht{inbox.length>1?"en":""}</div>
+                </div>
+              </div>
+              <div style={{background:"#DC2626",color:"#fff",minWidth:24,height:24,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,fontFamily:F,padding:"0 8px"}}>{inbox.length}</div>
+            </div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {Array.from(new Set(inbox.map(i => i.bereich))).slice(0,4).map((b,i) => (
+                <span key={i} style={{background:"rgba(255,255,255,0.6)",color:"#92400E",padding:"3px 8px",borderRadius:8,fontSize:10,fontFamily:F,fontWeight:600}}>{b}</span>
+              ))}
+            </div>
+            <div style={{fontSize:11,color:"#B45309",fontFamily:F,marginTop:8,fontStyle:"italic"}}>"{inbox[0].frage.substring(0,80)}{inbox[0].frage.length>80?"...":""}"</div>
+          </div>
+        )}
+
+        {w && (
+          <div onClick={()=>setView("weather")} style={{...CD,cursor:"pointer",padding:"12px 16px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:24}}>{WI(w.code)}</span>
+                <div style={{fontSize:13,fontFamily:F}}><span style={{fontWeight:700,fontSize:16}}>{w.temp}°C</span> <span style={{color:"#6B7280"}}>↑{w.hi}° ↓{w.lo}°</span></div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                {holidays.length > 0 && <span style={{background:"#F0FAF0",padding:"3px 8px",borderRadius:10,fontSize:10,fontFamily:F,color:"#166534",fontWeight:600}}>📅 {holidays[0].n}</span>}
+                <span style={{fontSize:11,color:"#9CA3AF",fontFamily:F}}>Details →</span>
+              </div>
+            </div>
+            {w.w && (
+              <div style={{display:"flex",gap:0,borderTop:"1px solid rgba(0,0,0,0.05)",paddingTop:8}}>
+                {w.w.map((d,i) => (
+                  <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
+                    <div style={{fontSize:10,color:i===0?"#1B5E3B":[5,6].includes(d.date.getDay())?"#E8961F":"#9CA3AF",fontFamily:F,fontWeight:i===0?700:400}}>{i===0?"Heu":d.dn}</div>
+                    <div style={{fontSize:13,margin:"1px 0"}}>{WI(d.code)}</div>
+                    <div style={{fontSize:10,fontWeight:600,fontFamily:F}}>{d.hi}°</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {alerts.length > 0 && (
+          <div style={{marginBottom:12}}>
+            {alerts.map((a,i) => (
+              <div key={i} style={{background:a.t==="rain"?"#EFF6FF":a.t==="holiday"?"#F0FAF0":"#FFFBEB",borderRadius:10,padding:"8px 12px",marginBottom:6,border:a.t==="rain"?"1px solid #BFDBFE":a.t==="holiday"?"1px solid #86EFAC":"1px solid #FDE68A"}}>
+                <div style={{fontSize:12,fontFamily:F,color:a.t==="rain"?"#1E40AF":a.t==="holiday"?"#166534":"#92400E",fontWeight:500}}>{a.m}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {od && (
+          <div style={{background:"linear-gradient(135deg,#FFF7ED,#FFFBF0)",borderRadius:16,padding:"12px 16px",marginBottom:12,border:"1px solid #E8961F"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18}}>⚠️</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,fontFamily:F,color:"#92400E"}}>Bestelltag!</div>
+                <div style={{fontSize:12,fontFamily:F,color:"#B45309"}}>{od.join(", ")}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div onClick={()=>setView("checklist")} style={{...CD,cursor:"pointer"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+            <div style={{fontSize:14,fontWeight:700,fontFamily:F}}>✅ BL Tages-Checks</div>
+            <div style={{fontSize:13,color:pg===100?"#1B5E3B":"#E8961F",fontFamily:F,fontWeight:600}}>{dc}/{allBL.length}</div>
+          </div>
+          <div style={{background:"#f0ede8",borderRadius:8,height:8,overflow:"hidden"}}>
+            <div style={{background:pg===100?"#1B5E3B":"#E8961F",height:"100%",width:`${pg}%`,borderRadius:8}}/>
+          </div>
+          <div style={{fontSize:12,color:"#9CA3AF",fontFamily:F,marginTop:8}}>Öffnen →</div>
+        </div>
+
+        <div onClick={()=>setView("workflows")} style={{...CD,cursor:"pointer"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:14,fontWeight:700,fontFamily:F}}>⚡ Workflows</div>
+            <div style={{fontSize:13,fontFamily:F,fontWeight:600,color:pw>0?"#E8961F":"#9CA3AF"}}>{awf.length>0?`${pw} offen`:"Starten →"}</div>
+          </div>
+          {awf.length > 0 ? awf.slice(0,3).map(wf => {
+            const dn = wf.steps.filter(s => s.done).length;
+            const tt = wf.steps.length;
+            const nx = wf.steps.find(s => !s.done);
+            return (
+              <div key={wf.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"#f8f7f4",borderRadius:10,marginBottom:4}}>
+                <span style={{fontSize:16}}>{wf.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontFamily:F,fontWeight:600}}>{wf.name}</div>
+                  {nx && <div style={{fontSize:11,fontFamily:F,color:"#6B7280",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nx.label}</div>}
+                </div>
+                <div style={{fontSize:11,fontFamily:F,fontWeight:600,color:"#9CA3AF"}}>{dn}/{tt}</div>
+              </div>
+            );
+          }) : <div style={{fontSize:12,color:"#9CA3AF",fontFamily:F}}>5 Templates verfügbar</div>}
+        </div>
+
+        {inbox.length === 0 && !inboxLoading && (
+          <div onClick={()=>setView("inbox")} style={{...CD,cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontSize:14,fontWeight:700,fontFamily:F}}>📥 Team-Inbox</div>
+              <div style={{fontSize:13,fontFamily:F,color:"#9CA3AF",fontWeight:600}}>Alle erledigt ✓</div>
+            </div>
+          </div>
+        )}
+
+        {dl && (dl.l.length > 0 || dl.a.length > 0) && (
+          <div style={CD}>
+            <div style={{fontSize:14,fontWeight:700,fontFamily:F,marginBottom:10}}>📦 Lieferungen & Abholungen</div>
+            {dl.l.map((x,i) => <div key={i} style={{padding:"4px 0",fontSize:13,fontFamily:F}}>🚛 {x}</div>)}
+            {dl.a.map((x,i) => <div key={i} style={{padding:"4px 0",fontSize:13,fontFamily:F}}>📍 {x}</div>)}
+          </div>
+        )}
+
+        {(() => {
+          const d = now.getDate();
+          const a = [];
+          if (d <= 8) a.push({i:"💰",t:"Lohnabrechnung (bis 8.)",u:d>=6});
+          if (d >= 18 && d <= 20) a.push({i:"📅",t:"Verfügbarkeiten (bis 20.)",u:d>=19});
+          if (d >= 22 && d <= 25) a.push({i:"📝",t:"Dienstplan (bis 25.)",u:d>=24});
+          if (!a.length) return null;
+          return (
+            <div style={CD}>
+              <div style={{fontSize:14,fontWeight:700,fontFamily:F,marginBottom:10}}>📌 Monatsaufgaben</div>
+              {a.map((x,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",marginBottom:6,background:x.u?"#FEF3C7":"#f8f7f4",borderRadius:10}}>
+                  <span>{x.i}</span>
+                  <div style={{fontSize:12,fontFamily:F,color:x.u?"#92400E":"#4B5563",fontWeight:x.u?600:400}}>{x.t}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          {[
+            {h:"https://app.planday.com",i:"📅",n:"Planday"},
+            {h:"https://germany.myplace.dish.co/cm/login",i:"💳",n:"Dish POS"},
+            {h:"https://app.kollex.de",i:"🍺",n:"Kollex"},
+            {h:"https://simonholling-spec.github.io/Freundschaft-Bot/",i:"🤖",n:"Chatbot"}
+          ].map((q,i) => (
+            <a key={i} href={q.h} target="_blank" rel="noopener" style={{background:"#fff",borderRadius:16,padding:"16px",display:"flex",flexDirection:"column",alignItems:"center",gap:6,border:"1px solid #f0ede8"}}>
+              <span style={{fontSize:24}}>{q.i}</span>
+              <span style={{fontSize:12,color:"#1a1a1a",fontFamily:F,fontWeight:600}}>{q.n}</span>
+            </a>
+          ))}
+        </div>
+
+        <div style={{textAlign:"center",padding:"16px 0 40px",color:"#C4B5A0",fontSize:11,fontFamily:F}}>Freundschaft · BL Dashboard</div>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
