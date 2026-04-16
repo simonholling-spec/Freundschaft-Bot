@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Nachricht an die Betriebsleitung · Freundschaft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: #FAFAF5;
+    color: #1a1a1a;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 20px 18px 40px;
+  }
+  .header {
+    background: linear-gradient(135deg, #1B5E3B 0%, #2a7a52 100%);
+    color: #fff;
+    margin: -20px -18px 20px;
+    padding: 28px 22px 24px;
+    border-radius: 0 0 24px 24px;
+  }
+  .header .eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #F5E6C8;
+    margin-bottom: 6px;
+  }
+  .header h1 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 6px;
+  }
+  .header p {
+    font-size: 14px;
+    color: #d4e8d4;
+    line-height: 1.5;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid #f0ede8;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .hint {
+    font-size: 12px;
+    color: #9CA3AF;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 6px;
+  }
+
+  input[type="text"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #f0ede8;
+    border-radius: 12px;
+    font-size: 16px; /* ≥16 verhindert iOS-Zoom */
+    font-family: inherit;
+    background: #fff;
+    color: #1a1a1a;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="text"]:focus,
+  textarea:focus,
+  select:focus { border-color: #1B5E3B; }
+
+  textarea {
+    min-height: 140px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 44px;
+  }
+
+  .category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .cat-pill {
+    padding: 10px 12px;
+    border: 2px solid #f0ede8;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4B5563;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .cat-pill.active {
+    border-color: currentColor;
+    background: currentColor;
+    color: #fff !important;
+  }
+  .cat-pill[data-color="bestellwunsch"]  { --c: #0891B2; }
+  .cat-pill[data-color="technik"]        { --c: #EC4899; }
+  .cat-pill[data-color="wunsch"]         { --c: #A855F7; }
+  .cat-pill[data-color="frage"]          { --c: #F59E0B; }
+  .cat-pill[data-color="personal"]       { --c: #22C55E; }
+  .cat-pill[data-color="hygiene"]        { --c: #A16207; }
+  .cat-pill[data-color="sonstiges"]      { --c: #64748B; }
+  .cat-pill { color: var(--c); }
+  .cat-pill.active {
+    background: var(--c);
+    border-color: var(--c);
+  }
+
+  button.submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: #1B5E3B;
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+  }
+  button.submit-btn:disabled {
+    background: #d0cdc6;
+    cursor: default;
+  }
+  button.submit-btn:not(:disabled):active { transform: scale(0.98); }
+
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    color: #9CA3AF;
+    margin-top: 20px;
+    line-height: 1.5;
+  }
+
+  /* Success Screen */
+  .success {
+    text-align: center;
+    padding: 48px 20px 32px;
+  }
+  .success-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 36px;
+    background: #1B5E3B;
+    color: #fff;
+    font-size: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+  .success h2 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 22px;
+    margin-bottom: 10px;
+    color: #1B5E3B;
+  }
+  .success p {
+    font-size: 14px;
+    color: #6B7280;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .btn-secondary {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #fff;
+    color: #1B5E3B;
+    border: 2px solid #1B5E3B;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-appearance: none;
+  }
+
+  .error {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- FORM -->
+  <div id="form-view">
+    <div class="header">
+      <div class="eyebrow">Freundschaft · Team-Inbox</div>
+      <h1>💬 Nachricht an die Betriebsleitung</h1>
+      <p>Fragen, Bestellwünsche oder Ideen? Schick sie direkt — die BL meldet sich zurück.</p>
+    </div>
+
+    <div id="error-box" class="error hidden"></div>
+
+    <div class="card">
+      <label>Deine Nachricht <span class="hint">Pflichtfeld</span></label>
+      <textarea id="nachricht" placeholder="Z.B. &quot;Der Eiswürfelbehälter im Rückbuffet braucht neue Filter.&quot; oder &quot;Können wir einen neuen Aperitivo ins Sortiment aufnehmen?&quot;" maxlength="2000"></textarea>
+    </div>
+
+    <div class="card">
+      <label>Dein Name <span class="hint">Optional — aber hilfreich für Rückfragen</span></label>
+      <input type="text" id="name" placeholder="Z.B. Lisa" maxlength="100" autocomplete="given-name">
+    </div>
+
+    <div class="card">
+      <label>Kategorie</label>
+      <div class="category-grid">
+        <div class="cat-pill active" data-value="Sonstiges" data-color="sonstiges">💬 Sonstiges</div>
+        <div class="cat-pill" data-value="Bestellwunsch" data-color="bestellwunsch">🍺 Bestellwunsch</div>
+        <div class="cat-pill" data-value="Technik / Reparatur" data-color="technik">🔧 Technik</div>
+        <div class="cat-pill" data-value="Wunsch / Idee" data-color="wunsch">💡 Wunsch / Idee</div>
+        <div class="cat-pill" data-value="Frage zum Betrieb" data-color="frage">❓ Frage</div>
+        <div class="cat-pill" data-value="Personal" data-color="personal">👥 Personal</div>
+        <div class="cat-pill" data-value="Hygiene" data-color="hygiene">🧼 Hygiene</div>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" disabled>Abschicken</button>
+
+    <div class="footer-note">
+      Deine Nachricht landet direkt bei der Betriebsleitung.<br>
+      Dringende Sachen bitte trotzdem direkt ansprechen 🤝
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="success-view" class="hidden">
+    <div class="card success">
+      <div class="success-icon">✓</div>
+      <h2>Danke!</h2>
+      <p id="success-msg">Deine Nachricht ist eingegangen. Die Betriebsleitung schaut täglich rein und meldet sich zurück.</p>
+      <button class="btn-secondary" onclick="resetForm()">Weitere Nachricht schreiben</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const WORKER_URL = "https://freundschaftbot.simon-holling.workers.dev";
+
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  const nachrichtEl = $("#nachricht");
+  const nameEl = $("#name");
+  const submitBtn = $("#submit-btn");
+  const errorBox = $("#error-box");
+  const formView = $("#form-view");
+  const successView = $("#success-view");
+
+  let selectedBereich = "Sonstiges";
+
+  // Kategorie-Auswahl
+  $$(".cat-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      $$(".cat-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      selectedBereich = pill.dataset.value;
+    });
+  });
+
+  // Submit-Button aktivieren wenn Nachricht eingegeben
+  const updateSubmitState = () => {
+    submitBtn.disabled = nachrichtEl.value.trim().length < 3;
+  };
+  nachrichtEl.addEventListener("input", updateSubmitState);
+
+  // Submit
+  submitBtn.addEventListener("click", async () => {
+    const nachricht = nachrichtEl.value.trim();
+    const name = nameEl.value.trim();
+    if (nachricht.length < 3) return;
+
+    errorBox.classList.add("hidden");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Wird gesendet...";
+
+    try {
+      const res = await fetch(`${WORKER_URL}/team-inbox`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nachricht, name, bereich: selectedBereich }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Fehler ${res.status}`);
+      }
+
+      // Success
+      formView.classList.add("hidden");
+      successView.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      errorBox.textContent = "⚠️ " + (e.message || "Etwas ist schiefgelaufen. Bitte nochmal versuchen.");
+      errorBox.classList.remove("hidden");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Abschicken";
+    }
+  });
+
+  // Reset
+  function resetForm() {
+    nachrichtEl.value = "";
+    nameEl.value = "";
+    selectedBereich = "Sonstiges";
+    $$(".cat-pill").forEach(p => p.classList.remove("active"));
+    $(".cat-pill[data-value='Sonstiges']").classList.add("active");
+    updateSubmitState();
+    submitBtn.textContent = "Abschicken";
+    errorBox.classList.add("hidden");
+    successView.classList.add("hidden");
+    formView.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  updateSubmitState();
+</script>
+</body>
+</html>
